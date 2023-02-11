@@ -48,7 +48,7 @@ class Clothing1M(data.Dataset):
             self.label_list = label_list
         else:
             self.image_list = np.array(image_list)
-            self.label_list = np.array(label_list)
+            self.label_list = torch.tensor(label_list)
 
             l = np.array(self.label_list)
             x = np.unique(l)

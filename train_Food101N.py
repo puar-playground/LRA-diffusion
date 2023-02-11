@@ -110,7 +110,7 @@ def train(diffusion_model, train_loader, test_loader, model_save_dir, n_epochs=1
                 optimizer.step()
                 ema_helper.update(diffusion_model.model)
 
-        acc_test = test(diffusion_model, clip_test_embed, test_loader)
+        acc_test = test(diffusion_model, test_loader, clip_test_embed)
         print(f"epoch: {epoch}, diff accuracy: {acc_test:.2f}%")
         if acc_test > max_accuracy:
             # save diffusion model
@@ -120,7 +120,7 @@ def train(diffusion_model, train_loader, test_loader, model_save_dir, n_epochs=1
             max_accuracy = max(max_accuracy, acc_test)
 
 
-def test(diffusion_model, clip_test_embed, test_loader):
+def test(diffusion_model, test_loader, test_embed):
 
     with torch.no_grad():
         diffusion_model.model.eval()
@@ -130,8 +130,8 @@ def test(diffusion_model, clip_test_embed, test_loader):
             [images, target, indicies] = data_batch[:3]
             target = target.to(device)
 
-            prior_embed = torch.tensor(clip_test_embed[indicies, :]).to(torch.float32).to(device)
-            label_t_0 = diffusion_model.reverse_ddim(images, prior_embed, stochastic=False).detach().cpu()
+            fp_embed = torch.tensor(test_embed[indicies, :]).to(torch.float32).to(device)
+            label_t_0 = diffusion_model.reverse_ddim(images, stochastic=False, fp_x=fp_embed).detach().cpu()
             acc_temp = accuracy(label_t_0.detach().cpu(), target.cpu())[0].item()
             acc_avg += acc_temp
 
@@ -206,11 +206,11 @@ if __name__ == "__main__":
         end = min((i + 1) * 100, train_embed.shape[0])
         ebd = train_embed[start:end, :]
         _, neighbour_ind = knn(ebd, train_embed, k=args.k+1)
-        neighbours[start:end, :] = torch.tensor(labels[neighbour_ind])
+        neighbours[start:end, :] = labels[neighbour_ind]
     np.save(os.path.join(data_dir, 'fp_knn_food.npy'), neighbours)
 
     # train the diffusion model
-    print('diffusion_knn')
+    print('diffusion_knn_Food101N')
     train(diffusion_model, train_loader, test_loader, model_path, n_epochs=args.nepoch, knn=args.k, data_dir=data_dir)
 
 

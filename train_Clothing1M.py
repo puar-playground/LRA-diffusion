@@ -130,7 +130,7 @@ def train(diffusion_model, train_loader, val_loader, test_loader, model_save_dir
             print(f"epoch: {epoch}, val accuracy: {acc_val:.2f}%")
 
 
-def test(diffusion_model, clip_test_embed, test_loader):
+def test(diffusion_model, test_loader, test_embed):
 
     with torch.no_grad():
         diffusion_model.model.eval()
@@ -139,11 +139,11 @@ def test(diffusion_model, clip_test_embed, test_loader):
         for test_batch_idx, data_batch in tqdm(enumerate(test_loader), total=len(test_loader), desc=f'evaluating diff', ncols=100):
             [images, target, indicies] = data_batch[:3]
             target = target.to(device)
-            with torch.no_grad():
-                prior_embed = torch.tensor(clip_test_embed[indicies, :]).to(torch.float32).to(device)
-                label_t_0 = diffusion_model.reverse_ddim(images, prior_embed, stochastic=False).detach().cpu()
-                acc_temp = accuracy(label_t_0.detach().cpu(), target.cpu())[0].item()
-                acc_avg += acc_temp
+
+            fp_embed = torch.tensor(test_embed[indicies, :]).to(torch.float32).to(device)
+            label_t_0 = diffusion_model.reverse_ddim(images, stochastic=False, fp_x=fp_embed).detach().cpu()
+            acc_temp = accuracy(label_t_0.detach().cpu(), target.cpu())[0].item()
+            acc_avg += acc_temp
 
         acc_avg /= len(test_loader)
 
@@ -231,13 +231,13 @@ if __name__ == "__main__":
     for i in tqdm(range(int(train_embed.shape[0] / 100) + 1), desc='pre-compute knn for training data', ncols=100):
         start = i * 100
         end = min((i + 1) * 100, train_embed.shape[0])
-        ebd = torch.tensor(train_embed[start:end, :])
+        ebd = train_embed[start:end, :]
         _, neighbour_ind = knn(ebd, train_embed, k=args.k + 1)
-        neighbours[start:end, :] = torch.tensor(labels[neighbour_ind])
+        neighbours[start:end, :] = labels[neighbour_ind]
     np.save(os.path.join(data_dir, 'fp_knn_cloth.npy'), neighbours)
 
     # train the diffusion model
-    print('diffusion_knn_cloth_1M')
+    print('diffusion_knn_Clothing1M')
     train(diffusion_model, train_loader, val_loader, test_loader, model_path, n_epochs=args.nepoch, knn=args.k, data_dir=data_dir)
 
 

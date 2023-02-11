@@ -183,12 +183,14 @@ class Diffusion(nn.Module):
 
         return label_t_0
 
-    def reverse_ddim(self, images, stochastic=True, fq_x=None):
+    def reverse_ddim(self, images, stochastic=True, fp_x=None, fq_x=None):
 
         images = images.to(self.device)
         with torch.no_grad():
 
-            fp_x = self.fp_encoder(images)
+            if fp_x is None:
+                fp_x = self.fp_encoder(images)
+
             label_t_0 = ddim_sample_loop(self.model, images, fp_x, self.ddim_timesteps, self.ddim_alphas,
                                          self.ddim_alphas_prev, self.ddim_sigmas, stochastic=stochastic, fq_x=fq_x)
 

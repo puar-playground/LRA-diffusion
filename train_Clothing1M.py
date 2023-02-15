@@ -130,12 +130,10 @@ if __name__ == "__main__":
     parser.add_argument("--feature_dim", default=2048, help="feature_dim", type=int)
     parser.add_argument("--k", default=10, help="k neighbors for knn", type=int)
     parser.add_argument("--ddim_n_step", default=10, help="number of steps in ddim", type=int)
-    parser.add_argument("--data_dir", default='/home/jian/Clothing1M', help="dir to Clothing1M", type=str)
     parser.add_argument("--diff_encoder", default='resnet50_l', help="which encoder for diffusion", type=str)
     args = parser.parse_args()
 
-    # data_dir = os.path.join(os.getcwd(), 'Clothing1M_data')
-    data_dir = args.data_dir
+    data_dir = os.path.join(os.getcwd(), 'Clothing1M_data')
 
     # set device
     device = args.device

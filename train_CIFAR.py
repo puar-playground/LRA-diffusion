@@ -11,7 +11,7 @@ import torchvision.transforms as transforms
 from utils.data_utils import Custom_dataset
 from utils.model_SimCLR import SimCLR_encoder
 import torch.optim as optim
-from utils.learning import cast_label_to_one_hot_and_prototype, adjust_learning_rate
+from utils.learning import *
 from model_diffusion import Diffusion
 from utils.knn_utils import sample_knn_labels
 import argparse
@@ -19,33 +19,6 @@ torch.manual_seed(123)
 torch.cuda.manual_seed(123)
 np.random.seed(123)
 random.seed(123)
-
-
-def accuracy(output, target, topk=(1,)):
-    """
-    Computes the accuracy over the k top predictions for the specified values of k.
-    """
-    maxk = min(max(topk), output.size()[1])
-
-    output = torch.softmax(-(output - 1)**2,  dim=-1)
-    batch_size = target.size(0)
-    _, pred = output.topk(maxk, 1, True, True)
-    pred = pred.t()
-    correct = pred.eq(target.reshape(1, -1).expand_as(pred))
-
-    return [correct[:min(k, maxk)].reshape(-1).float().sum(0) * 100. / batch_size for k in topk]
-
-
-def prepare_fp_x(fp_encoder, dataset, fp_dim=10):
-    fp_encoder.eval()
-    data_loader = data.DataLoader(dataset, batch_size=100, shuffle=False, num_workers=4)
-    fp_embed_all = torch.zeros([len(dataset), fp_dim]).to(device)
-    with tqdm(enumerate(data_loader), total=len(data_loader), desc=f'Computing embeddings fp(x)', ncols=100) as pbar:
-        for i, data_batch in pbar:
-            [x_batch, _, data_indecies] = data_batch[:3]
-            temp = fp_encoder(x_batch.to(device)).detach()
-            fp_embed_all[data_indecies, :] = temp
-    return fp_embed_all
 
 
 def train(diffusion_model, train_dataset, val_dataset, test_dataset, model_save_dir,
@@ -57,7 +30,7 @@ def train(diffusion_model, train_dataset, val_dataset, test_dataset, model_save_
     val_loader = data.DataLoader(val_dataset, batch_size=100, shuffle=False, num_workers=4)
     test_loader = data.DataLoader(test_dataset, batch_size=100, shuffle=False, num_workers=4)
 
-    fp_embd_all = prepare_fp_x(diffusion_model.fp_encoder, train_dataset, feature_dim=diffusion_model.fp_dim).to(device)
+    fp_embd_all = prepare_fp_x(diffusion_model.fp_encoder, train_dataset, fp_dim=diffusion_model.fp_dim).to(device)
 
     optimizer = optim.Adam(diffusion_model.model.parameters(), lr=0.0001, weight_decay=0.0, betas=(0.9, 0.999), amsgrad=False, eps=1e-08)
     diffusion_loss = nn.MSELoss(reduction='none')

@@ -10,48 +10,14 @@ from utils.clip_wrapper import clip_img_wrap
 from utils.cloth_data_utils import Clothing1M, get_train_labels, get_val_test_labels
 import torch
 import torch.optim as optim
-from utils.learning import cast_label_to_one_hot_and_prototype, adjust_learning_rate
+from utils.learning import *
 from model_diffusion import Diffusion
-from utils.knn_utils import sample_knn_labels, knn, knn_labels
+from utils.knn_utils import sample_knn_labels, knn, knn_labels, prepare_knn
 import argparse
 torch.manual_seed(123)
 torch.cuda.manual_seed(123)
 np.random.seed(123)
 random.seed(123)
-
-
-# random seed related
-def _init_fn(worker_id):
-    np.random.seed(77 + worker_id)
-
-
-def prepare_fp_x(fp_encoder, dataset, device, fp_dim=768):
-    with torch.no_grad():
-        data_loader = data.DataLoader(dataset, batch_size=100, shuffle=False, num_workers=4)
-        fp_embed_all = torch.zeros([len(dataset), fp_dim]).to(device)
-        with tqdm(enumerate(data_loader), total=len(data_loader), desc=f'Computing embeddings fp(x)',
-                  ncols=100) as pbar:
-            for i, data_batch in pbar:
-                [x_batch, _, data_indecies] = data_batch[:3]
-                temp = fp_encoder(x_batch.to(device))
-                fp_embed_all[data_indecies, :] = temp
-
-    return fp_embed_all
-
-
-def accuracy(output, target, topk=(1,)):
-    """
-    Computes the accuracy over the k top predictions for the specified values of k.
-    """
-    maxk = min(max(topk), output.size()[1])
-
-    output = torch.softmax(-(output - 1)**2,  dim=-1)
-    batch_size = target.size(0)
-    _, pred = output.topk(maxk, 1, True, True)
-    pred = pred.t()
-    correct = pred.eq(target.reshape(1, -1).expand_as(pred))
-
-    return [correct[:min(k, maxk)].reshape(-1).float().sum(0) * 100. / batch_size for k in topk]
 
 
 def train(diffusion_model, train_loader, val_loader, test_loader, model_save_dir, n_epochs=1000, knn=10, data_dir='./Clothing1M_data'):
@@ -63,7 +29,7 @@ def train(diffusion_model, train_loader, val_loader, test_loader, model_save_dir
     train_embed_all = np.load(os.path.join(data_dir, 'fp_embed_train_cloth.npy'))
     neighbours = np.load(os.path.join(data_dir, 'fp_knn_cloth.npy'))
 
-    # acc_diff = test(diffusion_model, test_embed, test_loader)
+    # acc_diff = test(diffusion_model, test_loader, test_embed)
     # print('test:', acc_diff)
 
     optimizer = optim.Adam(diffusion_model.model.parameters(), lr=0.0001, weight_decay=0.0, betas=(0.9, 0.999), amsgrad=False, eps=1e-08)
@@ -80,7 +46,8 @@ def train(diffusion_model, train_loader, val_loader, test_loader, model_save_dir
         with tqdm(enumerate(train_loader), total=len(train_loader), desc=f'train diffusion epoch {epoch}', ncols=120) as pbar:
             for i, (x_batch, y_batch, data_indices) in pbar:
 
-                fp_embd = diffusion_model.fp_encoder(x_batch.to(device))
+                with torch.no_grad():
+                    fp_embd = diffusion_model.fp_encoder(x_batch.to(device))
                 # fp_embd = torch.tensor(clip_train_embed[data_indices, :]).to(torch.float32).to(device)
                 # y_labels_batch, sample_weight = sample_knn_labels(fp_embd, y_batch.to(device), train_embed_all,
                 #                                                   torch.tensor(train_dataset.targets).to(device),
@@ -117,10 +84,10 @@ def train(diffusion_model, train_loader, val_loader, test_loader, model_save_dir
                 optimizer.step()
                 ema_helper.update(diffusion_model.model)
 
-        acc_val = test(diffusion_model, val_embed, val_loader)
+        acc_val = test(diffusion_model, val_loader, val_embed)
         if acc_val > max_accuracy:
             # save diffusion model
-            acc_test = test(diffusion_model, test_embed, test_loader)
+            acc_test = test(diffusion_model, test_loader, test_embed)
             print(f"epoch: {epoch}, val accuracy: {acc_val:.2f}%, test accuracy: {acc_test:.2f}%")
             states = [diffusion_model.model.state_dict(), diffusion_model.fp_encoder.state_dict()]
             torch.save(states, model_save_dir)
@@ -154,12 +121,12 @@ if __name__ == "__main__":
     print(os.getcwd())
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--nepoch", default=100, help="number of training epochs", type=int)
-    parser.add_argument("--batch_size", default=50, help="batch_size", type=int)
+    parser.add_argument("--nepoch", default=200, help="number of training epochs", type=int)
+    parser.add_argument("--batch_size", default=100, help="batch_size", type=int)
     parser.add_argument("--device", default='cpu', help="which GPU to use", type=str)
     parser.add_argument("--fp_encoder", default='PLC', help="encoder", type=str)
     parser.add_argument("--num_workers", default=4, help="num_workers", type=int)
-    parser.add_argument("--warmup_epochs", default=20, help="warmup_epochs", type=int)
+    parser.add_argument("--warmup_epochs", default=1, help="warmup_epochs", type=int)
     parser.add_argument("--feature_dim", default=2048, help="feature_dim", type=int)
     parser.add_argument("--k", default=10, help="k neighbors for knn", type=int)
     parser.add_argument("--ddim_n_step", default=10, help="number of steps in ddim", type=int)
@@ -187,7 +154,7 @@ if __name__ == "__main__":
     labels = torch.tensor(train_dataset.targets)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                                               num_workers=num_workers,
-                                              worker_init_fn=_init_fn, drop_last=True)
+                                              worker_init_fn=init_fn, drop_last=True)
     val_dataset = Clothing1M(data_root=data_dir, split='val')
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     test_dataset = Clothing1M(data_root=data_dir, split='test')
@@ -214,30 +181,23 @@ if __name__ == "__main__":
     diffusion_model.fp_encoder.eval()
 
     # pre-compute for fp embeddings on training data
-    print('pre-compute for fp embeddings on training data')
-    train_embed = prepare_fp_x(fp_encoder_model, train_dataset, device=device, fp_dim=fp_dim)
-    np.save(os.path.join(data_dir, 'fp_embed_train_cloth.npy'), train_embed.cpu())
+    print('pre-computing fp embeddings for training data')
+    train_embed_dir = os.path.join(data_dir, 'fp_embed_train_cloth.npy')
+    train_embed = prepare_fp_x(fp_encoder_model, train_dataset, train_embed_dir, device=device, fp_dim=fp_dim)
     # for validation data
-    print('pre-compute for fp embeddings on validation data')
-    val_embed = prepare_fp_x(fp_encoder_model, val_dataset, device=device, fp_dim=fp_dim)
-    np.save(os.path.join(data_dir, 'fp_embed_val_cloth.npy'), val_embed.cpu())
+    print('pre-computing fp embeddings for validation data')
+    val_embed_dir = os.path.join(data_dir, 'fp_embed_val_cloth.npy')
+    val_embed = prepare_fp_x(fp_encoder_model, val_dataset, val_embed_dir, device=device, fp_dim=fp_dim)
     # for testing data
-    print('pre-compute for fp embeddings on testing data')
-    test_embed = prepare_fp_x(fp_encoder_model, test_dataset, device=device, fp_dim=fp_dim)
-    np.save(os.path.join(data_dir, 'fp_embed_test_cloth.npy'), test_embed.cpu())
+    print('pre-computing fp embeddings for testing data')
+    test_embed_dir = os.path.join(data_dir, 'fp_embed_test_cloth.npy')
+    test_embed = prepare_fp_x(fp_encoder_model, test_dataset, test_embed_dir, device=device, fp_dim=fp_dim)
 
     # pre-compute knns on training data
-    neighbours = torch.zeros([train_embed.shape[0], args.k + 1]).to(torch.long)
-    for i in tqdm(range(int(train_embed.shape[0] / 100) + 1), desc='pre-compute knn for training data', ncols=100):
-        start = i * 100
-        end = min((i + 1) * 100, train_embed.shape[0])
-        ebd = train_embed[start:end, :]
-        _, neighbour_ind = knn(ebd, train_embed, k=args.k + 1)
-        neighbours[start:end, :] = labels[neighbour_ind]
-    np.save(os.path.join(data_dir, 'fp_knn_cloth.npy'), neighbours)
+    print('pre-compute knns on training data')
+    neighbours = prepare_knn(labels, train_embed, os.path.join(data_dir, 'fp_knn_cloth.npy'), k=args.k)
 
     # train the diffusion model
-    print('diffusion_knn_Clothing1M')
     train(diffusion_model, train_loader, val_loader, test_loader, model_path, n_epochs=args.nepoch, knn=args.k, data_dir=data_dir)
 
 

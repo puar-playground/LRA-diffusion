@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
-
+from tqdm import tqdm
+import numpy as np
+import os
 
 def knn(query, data, k=10):
 
@@ -64,3 +66,21 @@ def knn_labels(neighbours, indices, k=5, n_class=101):
     weights = neighbour_freq / torch.sum(neighbour_freq)
 
     return sampled_labels, torch.squeeze(weights)
+
+
+def prepare_knn(labels, train_embed, save_dir, k=10):
+
+    if os.path.exists(save_dir):
+        neighbours = torch.tensor(np.load(save_dir))
+        print(f'knn were computed before, loaded from: {save_dir}')
+    else:
+        neighbours = torch.zeros([train_embed.shape[0], k + 1]).to(torch.long)
+        for i in tqdm(range(int(train_embed.shape[0] / 100) + 1), desc='pre-compute knn for training data', ncols=100):
+            start = i * 100
+            end = min((i + 1) * 100, train_embed.shape[0])
+            ebd = train_embed[start:end, :]
+            _, neighbour_ind = knn(ebd, train_embed, k=k + 1)
+            neighbours[start:end, :] = labels[neighbour_ind]
+        np.save(save_dir, neighbours)
+
+    return neighbours

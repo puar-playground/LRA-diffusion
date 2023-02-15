@@ -1,5 +1,5 @@
 # LRA-diffusion
-This is the source code of the Label-Retrieval-Augmented Diffusion Models to learn from noisy labels.
+This is the source code of the Label-Retrieval-Augmented Diffusion Models for learning from noisy labels.
 
 <!-- ![CIFAR-10_TSNE](https://user-images.githubusercontent.com/123635107/214941573-02dfafbc-6e18-400d-87e6-fa604aab2501.png) -->
 

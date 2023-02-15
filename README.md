@@ -39,7 +39,7 @@ Default values for input arguments are given in the code. An example command is 
 python train_Food101N.py --device cuda:0 --nepoch 1000 --warmup_epochs 1 --feature_dim 2048
 ```
 ### Clothing1M<br />
-The dataset should be downloaded and saved in the [Clothing1M_data](https://github.com/puar-playground/LRA-diffusion/tree/main/Clothing1M_data) folder<br />
+The dataset should be downloaded according to the instruction here: [Clothing1M_data](https://github.com/puar-playground/LRA-diffusion/tree/main/Clothing1M_data)<br />
 Default values for input arguments are given in the code. An example command is given:
 ```
 python train_Clothing1M.py --device cuda:0 --nepoch 1000 --warmup_epochs 1 --feature_dim 4096

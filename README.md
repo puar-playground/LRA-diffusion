@@ -33,12 +33,13 @@ Default values for input arguments are given in the code. An example command is 
 python train_CIFAR.py --device cuda:0 --noise_type cifar10-1-0.35 --fp_encoder SimCLR --nepoch 1000 --warmup_epochs 20
 ```
 ### Food101N and Food101<br />
-The two datasets should be downloaded and saved in the Clothing1M_data folder, please see detail at:<br />
+The two datasets should be downloaded and saved in the Food101N_data folder, please see detail at:<br />
 Default values for input arguments are given in the code. An example command is given:
 ```
 python train_Food101N.py --device cuda:0 --nepoch 1000 --warmup_epochs 1 --feature_dim 2048
 ```
 ### Clothing1M<br />
+The dataset should be downloaded and saved in the Clothing1M_data folder, please see detail at:<br />
 Default values for input arguments are given in the code. An example command is given:
 ```
 python train_Clothing1M.py --device cuda:0 --nepoch 1000 --warmup_epochs 1 --feature_dim 4096

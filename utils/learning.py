@@ -69,7 +69,7 @@ def prepare_fp_x(fp_encoder, dataset, save_dir=None, device='cpu', fp_dim=768):
         if save_dir is not None:
             np.save(save_dir, fp_embed_all.cpu())
 
-    return fp_embed_all
+    return fp_embed_all.cpu()
 
 
 def accuracy(output, target, topk=(1,)):

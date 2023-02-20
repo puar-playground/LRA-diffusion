@@ -75,7 +75,7 @@ def prepare_knn(labels, train_embed, save_dir, k=10):
         print(f'knn were computed before, loaded from: {save_dir}')
     else:
         neighbours = torch.zeros([train_embed.shape[0], k + 1]).to(torch.long)
-        for i in tqdm(range(int(train_embed.shape[0] / 100) + 1), desc='pre-compute knn for training data', ncols=100):
+        for i in tqdm(range(int(train_embed.shape[0] / 100) + 1), desc='Searching knn', ncols=100):
             start = i * 100
             end = min((i + 1) * 100, train_embed.shape[0])
             ebd = train_embed[start:end, :]

@@ -88,6 +88,9 @@ def train(diffusion_model, train_loader, test_loader, model_save_dir, n_epochs=1
 
 def test(diffusion_model, test_loader, test_embed):
 
+    if not torch.is_tensor(test_embed):
+        test_embed = torch.tensor(test_embed).to(torch.float32)
+
     with torch.no_grad():
         diffusion_model.model.eval()
         diffusion_model.fp_encoder.eval()
@@ -96,7 +99,7 @@ def test(diffusion_model, test_loader, test_embed):
             [images, target, indicies] = data_batch[:3]
             target = target.to(device)
 
-            fp_embed = torch.tensor(test_embed[indicies, :]).to(torch.float32).to(device)
+            fp_embed = test_embed[indicies, :].to(device)
             label_t_0 = diffusion_model.reverse_ddim(images, stochastic=False, fp_x=fp_embed).detach().cpu()
             acc_temp = accuracy(label_t_0.detach().cpu(), target.cpu())[0].item()
             acc_avg += acc_temp
@@ -148,7 +151,7 @@ if __name__ == "__main__":
     # initialize diffusion model
     fp_encoder_model = clip_img_wrap('ViT-L/14', device, center=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
     fp_dim = fp_encoder_model.dim
-    model_path = './model/Food101N_clip_LRA-diffusion.pt'
+    model_path = './model/LRA-diffusion_Food101N.pt'
     diffusion_model = Diffusion(fp_encoder_model, num_timesteps=1000, n_class=n_class, fp_dim=fp_dim, device=device,
                                 feature_dim=args.feature_dim, encoder_type=args.diff_encoder,
                                 ddim_num_steps=args.ddim_n_step)
@@ -168,6 +171,9 @@ if __name__ == "__main__":
     # pre-compute knns on training data
     print('pre-compute knns on training data')
     neighbours = prepare_knn(labels, train_embed, os.path.join(data_dir, 'fp_knn_food.npy'), k=args.k)
+
+    # acc_diff = test(diffusion_model, test_loader, test_embed)
+    # print(acc_diff)
 
     # train the diffusion model
     train(diffusion_model, train_loader, test_loader, model_path, n_epochs=args.nepoch, knn=args.k, data_dir=data_dir)

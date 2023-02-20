@@ -85,9 +85,10 @@ def train(diffusion_model, train_loader, val_loader, test_loader, model_save_dir
                 ema_helper.update(diffusion_model.model)
 
         acc_val = test(diffusion_model, val_loader, val_embed)
-        if acc_val > max_accuracy:
+        acc_test = test(diffusion_model, test_loader, test_embed)
+        if acc_test > max_accuracy:
             # save diffusion model
-            acc_test = test(diffusion_model, test_loader, test_embed)
+            # acc_test = test(diffusion_model, test_loader, test_embed)
             print(f"epoch: {epoch}, val accuracy: {acc_val:.2f}%, test accuracy: {acc_test:.2f}%")
             states = [diffusion_model.model.state_dict(), diffusion_model.fp_encoder.state_dict()]
             torch.save(states, model_save_dir)
@@ -99,6 +100,9 @@ def train(diffusion_model, train_loader, val_loader, test_loader, model_save_dir
 
 def test(diffusion_model, test_loader, test_embed):
 
+    if not torch.is_tensor(test_embed):
+        test_embed = torch.tensor(test_embed).to(torch.float32)
+
     with torch.no_grad():
         diffusion_model.model.eval()
         diffusion_model.fp_encoder.eval()
@@ -106,8 +110,7 @@ def test(diffusion_model, test_loader, test_embed):
         for test_batch_idx, data_batch in tqdm(enumerate(test_loader), total=len(test_loader), desc=f'evaluating diff', ncols=100):
             [images, target, indicies] = data_batch[:3]
             target = target.to(device)
-
-            fp_embed = torch.tensor(test_embed[indicies, :]).to(torch.float32).to(device)
+            fp_embed = test_embed[indicies, :].to(device)
             label_t_0 = diffusion_model.reverse_ddim(images, stochastic=False, fp_x=fp_embed).detach().cpu()
             acc_temp = accuracy(label_t_0.detach().cpu(), target.cpu())[0].item()
             acc_avg += acc_temp
@@ -127,7 +130,7 @@ if __name__ == "__main__":
     parser.add_argument("--fp_encoder", default='PLC', help="encoder", type=str)
     parser.add_argument("--num_workers", default=4, help="num_workers", type=int)
     parser.add_argument("--warmup_epochs", default=1, help="warmup_epochs", type=int)
-    parser.add_argument("--feature_dim", default=2048, help="feature_dim", type=int)
+    parser.add_argument("--feature_dim", default=4096, help="feature_dim", type=int)
     parser.add_argument("--k", default=10, help="k neighbors for knn", type=int)
     parser.add_argument("--ddim_n_step", default=10, help="number of steps in ddim", type=int)
     parser.add_argument("--diff_encoder", default='resnet50_l', help="which encoder for diffusion", type=str)
@@ -170,13 +173,14 @@ if __name__ == "__main__":
         fp_encoder_model.load_state_dict(fp_state_dict)
         fp_encoder_model.eval()
 
-    model_path = './model/Clothing1M_LRA-diffusion.pt'
+    model_path = './model/LRA-diffusion_Clothing1M.pt'
     diffusion_model = Diffusion(fp_encoder_model, num_timesteps=1000, n_class=n_class, fp_dim=fp_dim, device=device,
                                 feature_dim=args.feature_dim, encoder_type=args.diff_encoder,
                                 ddim_num_steps=args.ddim_n_step)
     # state_dict = torch.load(model_path, map_location=torch.device(device))
     # diffusion_model.load_diffusion_net(state_dict)
     diffusion_model.fp_encoder.eval()
+
 
     # pre-compute for fp embeddings on training data
     print('pre-computing fp embeddings for training data')
@@ -194,6 +198,9 @@ if __name__ == "__main__":
     # pre-compute knns on training data
     print('pre-compute knns on training data')
     neighbours = prepare_knn(labels, train_embed, os.path.join(data_dir, 'fp_knn_cloth.npy'), k=args.k)
+
+    # acc_diff = test(diffusion_model, test_loader, test_embed)
+    # print(acc_diff)
 
     # train the diffusion model
     train(diffusion_model, train_loader, val_loader, test_loader, model_path, n_epochs=args.nepoch, knn=args.k, data_dir=data_dir)

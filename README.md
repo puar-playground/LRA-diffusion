@@ -55,3 +55,10 @@ python train_Clothing1M.py --device cuda:0 --nepoch 1000 --warmup_epochs 1 --fea
   year={2021}
 }
 ```
+
+
+| Method | Standart | LRA-Diffusion |  |  |  |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| Pre-trained encoder | - | SimCLR | CLIP ViT-B/32 | CLIP ViT-B/16 | CLIP ViT-L/14 |
+| 10k images time | 3.96 | 9.52 | 9.13 | 17.12 | 49.98 |
+| 50k images time | 20.77 | 41.31 | 39.82 | 92.34 | 303.17 |

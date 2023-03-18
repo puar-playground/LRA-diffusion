@@ -56,21 +56,3 @@ python train_Clothing1M.py --device cuda:0 --nepoch 1000 --warmup_epochs 1 --fea
 }
 ```
 
-
-| Method | Standart |: LRA-Diffusion||||
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| Pre-trained encoder | - | SimCLR | CLIP ViT-B/32 | CLIP ViT-B/16 | CLIP ViT-L/14 |
-| 10k images time | 3.96 | 9.52 | 9.13 | 17.12 | 49.98 |
-| 50k images time | 20.77 | 41.31 | 39.82 | 92.34 | 303.17 |
-
-
-|               |          Grouping             ||         Grouping 2         ||  Not Grouped    |
-| First Header  | Second Header | Third Header   | Forth Header | Fifth Header | Sixth Header    |
-| ------------- | :-----------: | -------------: | :----------: | :----------: | --------------- |
-| Tall Cell     |          *Long Cell*          ||         *Long Long Cell*                    |||
-| ^^            |   **Bold**    | 1. first item  | *Italic*     | 3. third item | + first point  |\
-| ^^            |               | 1. second item |              | 1. forth item | + second point |
-
-| New section   |     More      |         Data   | ... - -- --- |||
-| And more      | With an escaped \|          || "Try 'quotes' in quotes "         |||
-[Compicated table]

@@ -172,8 +172,8 @@ if __name__ == "__main__":
     print('pre-compute knns on training data')
     neighbours = prepare_knn(labels, train_embed, os.path.join(data_dir, 'fp_knn_food.npy'), k=args.k)
 
-    # acc_diff = test(diffusion_model, test_loader, test_embed)
-    # print(acc_diff)
+    acc_diff = test(diffusion_model, test_loader, test_embed)
+    print(acc_diff)
 
     # train the diffusion model
     train(diffusion_model, train_loader, test_loader, model_path, n_epochs=args.nepoch, knn=args.k, data_dir=data_dir)

@@ -42,9 +42,6 @@ def train(diffusion_model, val_loader, test_loader, device,
     ema_helper = EMA(mu=0.9999)
     ema_helper.register(diffusion_model.model)
 
-    acc_diff = test(diffusion_model, test_loader, test_embed)
-    print('test:', acc_diff)
-
     max_accuracy = 0.0
     print('Diffusion training start')
     for epoch in range(n_epochs):
@@ -234,6 +231,9 @@ if __name__ == "__main__":
     # print('pre-compute knns on training data')
     # neighbours = prepare_knn(train_labels, train_embed,
     #                          os.path.join(data_dir, f'fp_knn_cloth_{args.fp_encoder}.npy'), k=args.k)
+
+    acc_diff = test(diffusion_model, test_loader, test_embed)
+    print('test:', acc_diff)
 
     # train the diffusion model
     train(diffusion_model, val_loader, test_loader, device, model_path, args, data_dir=data_dir)

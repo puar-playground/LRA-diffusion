@@ -77,7 +77,6 @@ def train(diffusion_model, train_loader, test_loader, model_save_dir, n_epochs=1
         print(f"epoch: {epoch}, diff accuracy: {acc_test:.2f}%")
         if acc_test > max_accuracy:
             # save diffusion model
-            # states = [diffusion_model.model.state_dict(), diffusion_model.fp_encoder.state_dict()]
             states = [diffusion_model.model.state_dict(),
                       diffusion_model.diffusion_encoder.state_dict(),
                       diffusion_model.fp_encoder.state_dict()]
@@ -149,10 +148,10 @@ if __name__ == "__main__":
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
     # initialize diffusion model
-    fp_encoder_model = clip_img_wrap('ViT-L/14', device, center=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
-    fp_dim = fp_encoder_model.dim
+    fp_encoder = clip_img_wrap('ViT-L/14', device, center=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+    fp_dim = fp_encoder.dim
     model_path = './model/LRA-diffusion_Food101N_CLIP.pt'
-    diffusion_model = Diffusion(fp_encoder_model, num_timesteps=1000, n_class=n_class, fp_dim=fp_dim, device=device,
+    diffusion_model = Diffusion(fp_encoder, num_timesteps=1000, n_class=n_class, fp_dim=fp_dim, device=device,
                                 feature_dim=args.feature_dim, encoder_type=args.diff_encoder,
                                 ddim_num_steps=args.ddim_n_step)
     state_dict = torch.load(model_path, map_location=torch.device(device))
@@ -162,11 +161,11 @@ if __name__ == "__main__":
     # pre-compute for fp embeddings on training data
     print('pre-computing fp embeddings for training data')
     train_embed_dir = os.path.join(data_dir, 'fp_embed_train_food.npy')
-    train_embed = prepare_fp_x(fp_encoder_model, train_dataset, train_embed_dir, device=device, fp_dim=fp_dim)
+    train_embed = prepare_fp_x(fp_encoder, train_dataset, train_embed_dir, device=device, fp_dim=fp_dim)
     # for testing data
     print('pre-computing fp embeddings for testing data')
     test_embed_dir = os.path.join(data_dir, 'fp_embed_test_food.npy')
-    test_embed = prepare_fp_x(fp_encoder_model, test_dataset, test_embed_dir, device=device, fp_dim=fp_dim)
+    test_embed = prepare_fp_x(fp_encoder, test_dataset, test_embed_dir, device=device, fp_dim=fp_dim)
 
     # pre-compute knns on training data
     print('pre-compute knns on training data')

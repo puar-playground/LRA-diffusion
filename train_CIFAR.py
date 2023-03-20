@@ -4,6 +4,7 @@ from tqdm import tqdm
 from utils.ema import EMA
 import numpy as np
 import random
+import time
 from utils.clip_wrapper import clip_img_wrap
 import torch
 import torchvision
@@ -13,6 +14,8 @@ from utils.model_SimCLR import SimCLR_encoder
 import torch.optim as optim
 from utils.learning import *
 from model_diffusion import Diffusion
+import utils.resnet as resnet_s
+import utils.ResNet_large as resnet_l
 from utils.knn_utils import sample_knn_labels
 import argparse
 torch.manual_seed(123)
@@ -21,14 +24,12 @@ np.random.seed(123)
 random.seed(123)
 
 
-def train(diffusion_model, train_dataset, val_dataset, test_dataset, model_save_dir,
-          n_epochs=1000, batch_size=256, k=10, real_fp=True, warmup_epochs=20):
+def train(diffusion_model, train_dataset, val_dataset, test_dataset, model_save_dir, args, real_fp):
     device = diffusion_model.device
     n_class = diffusion_model.n_class
-
-    train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-    val_loader = data.DataLoader(val_dataset, batch_size=100, shuffle=False, num_workers=4)
-    test_loader = data.DataLoader(test_dataset, batch_size=100, shuffle=False, num_workers=4)
+    n_epochs = args.nepoch
+    k = args.k
+    warmup_epochs = args.warmup_epochs
 
     fp_embd_all = prepare_fp_x(diffusion_model.fp_encoder, train_dataset, fp_dim=diffusion_model.fp_dim).to(device)
 
@@ -95,14 +96,16 @@ def train(diffusion_model, train_dataset, val_dataset, test_dataset, model_save_
                 # save diffusion model
                 print('Improved! evaluate on testing set...')
                 test_acc = test(diffusion_model, test_loader)
-                # states = [diffusion_model.model.state_dict(), diffusion_model.fp_encoder.state_dict()]
-                # torch.save(states, model_save_dir)
+                states = [diffusion_model.model.state_dict(),
+                          diffusion_model.diffusion_encoder.state_dict(),
+                          diffusion_model.fp_encoder.state_dict()]
+                torch.save(states, model_save_dir)
                 print(f"Model saved, update best accuracy at Epoch {epoch}, val acc: {val_acc}, test acc: {test_acc}")
                 max_accuracy = max(max_accuracy, val_acc)
 
 
 def test(diffusion_model, test_loader):
-
+    start = time.time()
     with torch.no_grad():
         diffusion_model.model.eval()
         diffusion_model.fp_encoder.eval()
@@ -116,6 +119,28 @@ def test(diffusion_model, test_loader):
             acc_avg += acc_temp
 
         acc_avg /= len(test_loader)
+
+    print(f'time cost for CLR: {time.time() - start}')
+
+    return acc_avg
+
+
+def test_clr(clr_model, test_loader):
+
+    start = time.time()
+    with torch.no_grad():
+        clr_model.eval()
+        acc_avg = 0.
+        for test_batch_idx, data_batch in tqdm(enumerate(test_loader), total=len(test_loader), desc=f'Doing DDIM...', ncols=100):
+            [images, target, _] = data_batch[:3]
+            target = target.to(device)
+
+            label_t_0 = clr_model(images.to(device)).detach().cpu()
+            acc_temp = accuracy(label_t_0.detach().cpu(), target.cpu())[0].item()
+            acc_avg += acc_temp
+
+        acc_avg /= len(test_loader)
+    print(f'time cost for CLR: {time.time() - start}')
 
     return acc_avg
 
@@ -133,7 +158,8 @@ if __name__ == "__main__":
     parser.add_argument("--k", default=10, help="k neighbors for knn", type=int)
     parser.add_argument("--ddim_n_step", default=10, help="number of steps in ddim", type=int)
     parser.add_argument("--fp_encoder", default='SimCLR', help="which encoder for fp (SimCLR or CLIP)", type=str)
-    parser.add_argument("--diff_encoder", default='resnet18', help="which encoder for diffusion (linear, resnet18, 34, 50...)", type=str)
+    parser.add_argument("--CLIP_type", default='ViT-L/14', help="which encoder for CLIP", type=str)
+    parser.add_argument("--diff_encoder", default='resnet50', help="which encoder for diffusion (linear, resnet18, 34, 50...)", type=str)
     args = parser.parse_args()
 
     # set device
@@ -162,7 +188,7 @@ if __name__ == "__main__":
         fp_encoder.load_state_dict(state_dict, strict=False)
     elif args.fp_encoder == 'CLIP':
         real_fp = False
-        fp_encoder = clip_img_wrap('ViT-L/14', args.device, center=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010))
+        fp_encoder = clip_img_wrap(args.CLIP_type, args.device, center=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010))
         fp_dim = fp_encoder.dim
     else:
         raise Exception("fp_encoder should be SimCLR or CLIP")
@@ -179,6 +205,11 @@ if __name__ == "__main__":
     val_dataset = Custom_dataset(train_dataset_cifar.data[45000:], train_dataset_cifar.targets[45000:])
     test_dataset = Custom_dataset(test_dataset_cifar.data, test_dataset_cifar.targets)
 
+    batch_size = args.batch_size
+    train_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+    val_loader = data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    test_loader = data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+
     # load noisy label
     noise_label = np.load('./noise_label/' + args.noise_type + '.npy')
     train_dataset.update_label(noise_label)
@@ -192,11 +223,15 @@ if __name__ == "__main__":
     # diffusion_model.load_diffusion_net(state_dict)
     diffusion_model.fp_encoder.eval()
 
+    acc_diff = test(diffusion_model, test_loader)
+
+    clr_model = resnet_s.resnet50(num_input_channels=3, num_classes=n_class).to(device)
+    acc_clr = test_clr(clr_model, test_loader)
+
     # train the diffusion model
     print(f'training LRA-diffusion using fp encoder: {args.fp_encoder} on: {args.noise_type}.')
     print(f'model saving dir: {model_path}')
-    train(diffusion_model, train_dataset, val_dataset, test_dataset, model_path, n_epochs=args.nepoch,
-          batch_size=args.batch_size, k=args.k, real_fp=real_fp, warmup_epochs=args.warmup_epochs)
-
+    train(diffusion_model, train_dataset, val_dataset, test_dataset, model_path, args, real_fp=real_fp)
+    
 
 

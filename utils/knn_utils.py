@@ -68,6 +68,22 @@ def knn_labels(neighbours, indices, k=5, n_class=101):
     return sampled_labels, torch.squeeze(weights)
 
 
+def mean_knn_labels(query_embd, y_query, prior_embd, labels, k=100, n_class=10):
+
+    _, neighbour_ind = knn(query_embd, prior_embd, k=k)
+
+    # compute the label of nearest neighbours
+    neighbour_label_distribution = labels[neighbour_ind]
+
+    # append the label of query
+    neighbour_label_distribution = torch.cat((neighbour_label_distribution, y_query[:, None]), 1)
+
+    one_hot_labels = nn.functional.one_hot(neighbour_label_distribution, num_classes=n_class)
+    mean_labels = torch.sum(one_hot_labels, dim=1) / (k+1)
+
+    return mean_labels
+
+
 def prepare_knn(labels, train_embed, save_dir, k=10):
 
     if os.path.exists(save_dir):
@@ -75,9 +91,9 @@ def prepare_knn(labels, train_embed, save_dir, k=10):
         print(f'knn were computed before, loaded from: {save_dir}')
     else:
         neighbours = torch.zeros([train_embed.shape[0], k + 1]).to(torch.long)
-        for i in tqdm(range(int(train_embed.shape[0] / 100) + 1), desc='Searching knn', ncols=100):
-            start = i * 100
-            end = min((i + 1) * 100, train_embed.shape[0])
+        for i in tqdm(range(int(train_embed.shape[0] / 1000) + 1), desc='Searching knn', ncols=100):
+            start = i * 1000
+            end = min((i + 1) * 1000, train_embed.shape[0])
             ebd = train_embed[start:end, :]
             _, neighbour_ind = knn(ebd, train_embed, k=k + 1)
             neighbours[start:end, :] = labels[neighbour_ind]

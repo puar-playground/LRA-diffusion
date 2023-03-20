@@ -50,14 +50,14 @@ def init_fn(worker_id):
     np.random.seed(77 + worker_id)
 
 
-def prepare_fp_x(fp_encoder, dataset, save_dir=None, device='cpu', fp_dim=768):
+def prepare_fp_x(fp_encoder, dataset, save_dir=None, device='cpu', fp_dim=768, batch_size=400):
 
     if os.path.exists(save_dir):
         fp_embed_all = torch.tensor(np.load(save_dir))
         print(f'Embeddings were computed before, loaded from: {save_dir}')
     else:
         with torch.no_grad():
-            data_loader = data.DataLoader(dataset, batch_size=100, shuffle=False, num_workers=4)
+            data_loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
             fp_embed_all = torch.zeros([len(dataset), fp_dim]).to(device)
             with tqdm(enumerate(data_loader), total=len(data_loader), desc=f'Computing embeddings fp(x)',
                       ncols=100) as pbar:

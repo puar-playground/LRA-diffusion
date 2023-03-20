@@ -180,14 +180,14 @@ def make_ddim_sampling_parameters(alphacums, ddim_timesteps, eta):
     return sigmas, alphas, alphas_prev
 
 
-def ddim_sample_loop(model, x, fp_x, timesteps, ddim_alphas, ddim_alphas_prev, ddim_sigmas, stochastic=True, fq_x=None):
+def ddim_sample_loop(model, x_embed, fp_x, timesteps, y_dim, ddim_alphas, ddim_alphas_prev, ddim_sigmas, stochastic=True, fq_x=None):
     device = next(model.parameters()).device
-    batch_size = x.shape[0]
+    batch_size = x_embed.shape[0]
 
     if fq_x is None:
-        y_t = stochastic * torch.randn_like(torch.zeros([batch_size, model.y_dim])).to(device)
+        y_t = stochastic * torch.randn_like(torch.zeros([batch_size, y_dim])).to(device)
     else:
-        y_t = stochastic * torch.randn_like(torch.zeros([batch_size, model.y_dim])).to(device) + fq_x
+        y_t = stochastic * torch.randn_like(torch.zeros([batch_size, y_dim])).to(device) + fq_x
 
     # intermediates = {'y_inter': [y_t], 'pred_y0': [y_t]}
     time_range = np.flip(timesteps)
@@ -198,7 +198,8 @@ def ddim_sample_loop(model, x, fp_x, timesteps, ddim_alphas, ddim_alphas_prev, d
         index = total_steps - i - 1
         t = torch.full((batch_size,), step, device=device, dtype=torch.long)
 
-        y_t, pred_y0 = ddim_sample_step(model, x, y_t, fp_x, t, index, ddim_alphas, ddim_alphas_prev, ddim_sigmas, fq_x=fq_x)
+        y_t, pred_y0 = ddim_sample_step(model, x_embed, y_t, fp_x, t, index, ddim_alphas,
+                                        ddim_alphas_prev, ddim_sigmas, fq_x=fq_x)
 
         # intermediates['y_inter'].append(y_t)
         # intermediates['pred_y0'].append(pred_y0)
@@ -206,10 +207,10 @@ def ddim_sample_loop(model, x, fp_x, timesteps, ddim_alphas, ddim_alphas_prev, d
     return y_t
 
 
-def ddim_sample_step(model, x, y_t, fp_x, t, index, ddim_alphas, ddim_alphas_prev, ddim_sigmas, fq_x=None):
-    batch_size = x.shape[0]
+def ddim_sample_step(model, x_embed, y_t, fp_x, t, index, ddim_alphas, ddim_alphas_prev, ddim_sigmas, fq_x=None):
+    batch_size = x_embed.shape[0]
     device = next(model.parameters()).device
-    e_t = model(x, y_t, t, fp_x).to(device).detach()
+    e_t = model(x_embed, y_t, t, fp_x).to(device).detach()
 
     sqrt_one_minus_alphas = torch.sqrt(1. - ddim_alphas)
     # select parameters corresponding to the currently considered timestep

@@ -1,6 +1,9 @@
 import os
+import random
+
 import torch
 import torch.utils.data as data
+from transformers import CLIPModel, CLIPProcessor
 import numpy as np
 from PIL import Image
 import PIL
@@ -8,8 +11,13 @@ import torchvision.transforms as transforms
 
 
 class Clothing1M(data.Dataset):
-    def __init__(self, data_root=None, split='train', cls_size=18976):
+    def __init__(self, data_root=None, split='train', cls_size=18976, randomize=False, Fashion=False):
         self.data_root = data_root
+        self.Fashion = Fashion
+        if Fashion:
+            self.processor = CLIPProcessor.from_pretrained("patrickjohncyh/fashion-clip")
+        else:
+            self.processor = None
 
         if split == 'train':
             file_path = os.path.join(self.data_root, 'annotations/noisy_train_key_list.txt')
@@ -59,8 +67,10 @@ class Clothing1M(data.Dataset):
             for i in x:
                 idx = np.where(l == i)[0]
                 idx = np.random.permutation(idx)
-                idx = idx[:cls_size]
-
+                if randomize:
+                    idx = random.sample(list(idx), cls_size)
+                else:
+                    idx = idx[:cls_size]
                 res_img_list.append(self.image_list[idx])
                 res_label_list.append(self.label_list[idx])
 
@@ -70,25 +80,29 @@ class Clothing1M(data.Dataset):
         self.targets = self.label_list  # this is for backward code compatibility
 
     def __getitem__(self, index):
-        image_file_name = self.image_list[index]
-        image_path = os.path.join(self.data_root, image_file_name)
-
-        image = Image.open(image_path)
-        image = image.resize((256, 256), resample=PIL.Image.BICUBIC)
-
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-
-        if self.transform is not None:
-            image = self.transform(image)
-
-        if image.size(0) == 1:
-            image = image.repeat(3, 1, 1)
 
         label = self.label_list[index]
         label = np.array(label).astype(np.int64)
 
-        return image, torch.from_numpy(label), index
+        image_file_name = self.image_list[index]
+        image_path = os.path.join(self.data_root, image_file_name)
+
+        image = Image.open(image_path)
+        # image = image.resize((256, 256), resample=PIL.Image.BICUBIC)
+
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+
+        if self.Fashion:
+            inputs = self.processor(images=image, return_tensors="pt")
+            image = inputs.pixel_values.squeeze()
+            return image, torch.from_numpy(label), index
+        else:
+            if self.transform is not None:
+                image = self.transform(image)
+            if image.size(0) == 1:
+                image = image.repeat(3, 1, 1)
+            return image, torch.from_numpy(label), index
 
     def __len__(self):
         return len(self.label_list)
@@ -118,8 +132,6 @@ def get_train_labels(data_dir):
     for t in train_list:
         label = label_map[t]
         train_labels.append(label)
-
-    print(len(train_labels))
 
     with open(data_dir + '/annotations/my_train_label.txt', 'w') as fid:
         for p in train_labels:
@@ -176,6 +188,12 @@ if __name__ == '__main__':
     # get_train_labels(data_dir)
     # get_val_test_labels(data_dir)
 
-    train_dataset = Clothing1M(data_root=data_dir, split='train')
+    train_dataset = Clothing1M(data_root=data_dir, split='train', randomize=True)
     labels = train_dataset.targets
     print(len(labels))
+
+
+    a = list(range(100))
+    b = random.sample(a, 10)
+    print(b)
+

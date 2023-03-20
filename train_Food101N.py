@@ -27,9 +27,6 @@ def train(diffusion_model, train_loader, test_loader, model_save_dir, n_epochs=1
     clip_train_embed = np.load(os.path.join(data_dir, 'fp_embed_train_food.npy'))
     neighbours = np.load(os.path.join(data_dir, 'fp_knn_food.npy'))
 
-    # acc_diff = test(diffusion_model, clip_test_embed, test_loader)
-    # print('test:', acc_diff)
-
     optimizer = optim.Adam(diffusion_model.model.parameters(), lr=0.0001, weight_decay=0.0, betas=(0.9, 0.999), amsgrad=False, eps=1e-08)
     diffusion_loss = nn.MSELoss(reduction='none')
 
@@ -80,7 +77,10 @@ def train(diffusion_model, train_loader, test_loader, model_save_dir, n_epochs=1
         print(f"epoch: {epoch}, diff accuracy: {acc_test:.2f}%")
         if acc_test > max_accuracy:
             # save diffusion model
-            states = [diffusion_model.model.state_dict(), diffusion_model.fp_encoder.state_dict()]
+            # states = [diffusion_model.model.state_dict(), diffusion_model.fp_encoder.state_dict()]
+            states = [diffusion_model.model.state_dict(),
+                      diffusion_model.diffusion_encoder.state_dict(),
+                      diffusion_model.fp_encoder.state_dict()]
             torch.save(states, model_save_dir)
             print("Model saved, update best accuracy at Epoch {}.".format(epoch))
             max_accuracy = max(max_accuracy, acc_test)
@@ -151,12 +151,12 @@ if __name__ == "__main__":
     # initialize diffusion model
     fp_encoder_model = clip_img_wrap('ViT-L/14', device, center=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
     fp_dim = fp_encoder_model.dim
-    model_path = './model/LRA-diffusion_Food101N.pt'
+    model_path = './model/LRA-diffusion_Food101N_CLIP.pt'
     diffusion_model = Diffusion(fp_encoder_model, num_timesteps=1000, n_class=n_class, fp_dim=fp_dim, device=device,
                                 feature_dim=args.feature_dim, encoder_type=args.diff_encoder,
                                 ddim_num_steps=args.ddim_n_step)
-    # state_dict = torch.load(model_path, map_location=torch.device(device))
-    # diffusion_model.load_diffusion_net(state_dict)
+    state_dict = torch.load(model_path, map_location=torch.device(device))
+    diffusion_model.load_diffusion_net(state_dict)
     diffusion_model.fp_encoder.eval()
 
     # pre-compute for fp embeddings on training data
@@ -177,6 +177,9 @@ if __name__ == "__main__":
 
     # train the diffusion model
     train(diffusion_model, train_loader, test_loader, model_path, n_epochs=args.nepoch, knn=args.k, data_dir=data_dir)
+
+
+
 
 
 

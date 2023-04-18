@@ -4,9 +4,8 @@ This is the source code of the Label-Retrieval-Augmented Diffusion Models for le
 <!-- ![CIFAR-10_TSNE](https://user-images.githubusercontent.com/123635107/214941573-02dfafbc-6e18-400d-87e6-fa604aab2501.png) -->
 
 ## 1. preparing python environment
-Activate the virtual environment and install requirements.<br />
+Install requirements.<br />
 ```
-source ./venv3/bin/activate
 pip install -r requirements.txt
 ```
 

@@ -39,13 +39,5 @@ python train_Clothing1M.py --device cuda:0 --nepoch 200 --warmup_epochs 1 --feat
 ```
 
 ## Reference
-(PLC) Progressive Label Correction:
-```
-@article{zhang2021learning,
-  title={Learning with feature-dependent label noise: A progressive approach},
-  author={Zhang, Yikai and Zheng, Songzhu and Wu, Pengxiang and Goswami, Mayank and Chen, Chao},
-  journal={arXiv preprint arXiv:2103.07756},
-  year={2021}
-}
-```
+
 

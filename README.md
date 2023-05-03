@@ -29,7 +29,7 @@ python train_CIFAR.py --device cuda:0 --noise_type cifar10-1-0.35 --fp_encoder S
 The dataset should be downloaded according to the instruction here: [Food101N](https://github.com/puar-playground/LRA-diffusion/tree/main/Food101N_data)<br />
 Default values for input arguments are given in the code. An example command is given:
 ```
-python train_Food101N.py --device cuda:0 --nepoch 200 --warmup_epochs 1 --feature_dim 1024
+python train_Food101N.py --device cuda:0 --nepoch 32 --warmup_epochs 1 --feature_dim 1024
 ```
 ### Clothing1M<br />
 The dataset should be downloaded according to the instruction here: [Clothing1M](https://github.com/puar-playground/LRA-diffusion/tree/main/Clothing1M_data)<br />

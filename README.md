@@ -39,7 +39,7 @@ python train_Clothing1M.py --gpu_devices 0 1 2 3 --nepoch 200 --warmup_epochs 1 
 ```
 
 ## 5. Checkpoints
-Trained checkpoints for the diffusion model is available at [here](https).
+Trained checkpoints for the diffusion model is available at [here](https://drive.google.com/drive/folders/1SXzlQoOAksw349J2jnBSh5aCprDWdTQb?usp=share_link).
 
 ## Reference
 

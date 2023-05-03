@@ -148,8 +148,7 @@ if __name__ == "__main__":
     else:
         device = args.device
 
-    # data_dir = os.path.join(os.getcwd(), 'Clothing1M')
-    data_dir = os.path.join('/media/sdc/jian', 'Clothing1M_data')
+    data_dir = os.path.join(os.getcwd(), 'Clothing1M')
     print('data_dir', data_dir)
 
     n_class = 14

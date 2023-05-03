@@ -150,7 +150,7 @@ if __name__ == "__main__":
     # initialize diffusion model
     fp_encoder = clip_img_wrap('ViT-L/14', device, center=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
     fp_dim = fp_encoder.dim
-    model_path = './model/LRA-diffusion_Food101N_CLIP.pt'
+    model_path = './model/LRA-diffusion_Food101N.pt'
     diffusion_model = Diffusion(fp_encoder, num_timesteps=1000, n_class=n_class, fp_dim=fp_dim, device=device,
                                 feature_dim=args.feature_dim, encoder_type=args.diff_encoder,
                                 ddim_num_steps=args.ddim_n_step)

@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--nepoch", default=100, help="number of training epochs", type=int)
-    parser.add_argument("--batch_size", default=200, help="batch_size", type=int)
+    parser.add_argument("--batch_size", default=32, help="batch_size", type=int)
     parser.add_argument("--device", default='cpu', help="which GPU to use", type=str)
     parser.add_argument("--num_workers", default=4, help="num_workers", type=int)
     parser.add_argument("--warmup_epochs", default=1, help="warmup_epochs", type=int)
@@ -123,7 +123,7 @@ if __name__ == "__main__":
                         help="which encoder for diffusion (resnet18_l, 34_l, 50_l...)", type=str)
     args = parser.parse_args()
 
-    data_dir = os.path.join(os.getcwd(), 'Food101N_data')
+    data_dir = os.path.join(os.getcwd(), 'Food101N')
 
     # set device
     device = args.device
@@ -154,8 +154,9 @@ if __name__ == "__main__":
     diffusion_model = Diffusion(fp_encoder, num_timesteps=1000, n_class=n_class, fp_dim=fp_dim, device=device,
                                 feature_dim=args.feature_dim, encoder_type=args.diff_encoder,
                                 ddim_num_steps=args.ddim_n_step)
-    state_dict = torch.load(model_path, map_location=torch.device(device))
-    diffusion_model.load_diffusion_net(state_dict)
+    # # load trained checkpoint to do test.
+    # state_dict = torch.load(model_path, map_location=torch.device(device))
+    # diffusion_model.load_diffusion_net(state_dict)
     diffusion_model.fp_encoder.eval()
 
     # pre-compute for fp embeddings on training data

@@ -10,7 +10,7 @@ pip install -r requirements.txt
 ```
 
 ## 2. Pre-trained model
-The pre-trianed SimCLR encoder for CIFAR-10 and CIFAR-100 is available at: [SimCLR models](https://github.com/puar-playground/LRA-diffusion/tree/main/model) <br />
+The pre-trianed SimCLR encoder for CIFAR-10 and CIFAR-100 is provided in the [models](https://github.com/puar-playground/LRA-diffusion/tree/main/model) folder <br />
 Please download the SimCLR models and put them in to the model folder.<br />
 
 CLIP models are available in the python package.

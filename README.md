@@ -38,6 +38,9 @@ The [training data](https://github.com/puar-playground/LRA-diffusion/tree/main/C
 python train_Clothing1M.py --gpu_devices 0 1 2 3 --nepoch 200 --warmup_epochs 1 --feature_dim 1024
 ```
 
+## 5. Checkpoints
+Trained checkpoints for the diffusion model is available at [here](https).
+
 ## Reference
 
 

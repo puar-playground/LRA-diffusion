@@ -10,7 +10,7 @@ pip install -r requirements.txt
 ```
 
 ## 2. Pre-trained model
-The pre-trianed SimCLR encoder for CIFAR-10 and CIFAR-100 is provided in the [models](https://github.com/puar-playground/LRA-diffusion/tree/main/model) folder <br />
+The pre-trianed SimCLR encoder for CIFAR-10 and CIFAR-100 is provided in the [model](https://github.com/puar-playground/LRA-diffusion/tree/main/model) folder <br />
 Please download the SimCLR models and put them in to the model folder.<br />
 
 CLIP models are available in the python package.
@@ -34,7 +34,7 @@ python train_Food101N.py --device cuda:0 --nepoch 32 --warmup_epochs 1 --feature
 ### Clothing1M<br />
 The dataset should be downloaded according to the instruction here: [Clothing1M](https://github.com/puar-playground/LRA-diffusion/tree/main/Clothing1M_data). Default values for input arguments are given in the code. <br />
 
-The [training data](https://github.com/puar-playground/LRA-diffusion/tree/main/Clothing1M/annotations) is selected by the pre-trained ["Centrality and Consistency"](https://github.com/uitrbn/tscsi_idn) (CC) classification model. The pre-trained CC model is also provided in the model folder. An example command using multiple gpus is given:
+The [training data](https://github.com/puar-playground/LRA-diffusion/tree/main/Clothing1M/annotations) is selected by the pre-trained ["Centrality and Consistency"](https://github.com/uitrbn/tscsi_idn) (CC) classification model. The pre-trained CC model is also provided in the [model](https://github.com/puar-playground/LRA-diffusion/tree/main/model) folder. An example command using multiple gpus is given:
 ```
 python train_Clothing1M.py --gpu_devices 0 1 2 3 --nepoch 200 --warmup_epochs 1 --feature_dim 1024
 ```

@@ -77,9 +77,12 @@ def train(diffusion_model, train_loader, test_loader, model_save_dir, n_epochs=1
         print(f"epoch: {epoch}, diff accuracy: {acc_test:.2f}%")
         if acc_test > max_accuracy:
             # save diffusion model
-            states = [diffusion_model.model.state_dict(),
-                      diffusion_model.diffusion_encoder.state_dict(),
-                      diffusion_model.fp_encoder.state_dict()]
+            if args.device is None:
+                states = [diffusion_model.model.module.state_dict(),
+                          diffusion_model.diffusion_encoder.module.state_dict()]
+            else:
+                states = [diffusion_model.model.state_dict(),
+                          diffusion_model.diffusion_encoder.state_dict()]
             torch.save(states, model_save_dir)
             print("Model saved, update best accuracy at Epoch {}.".format(epoch))
             max_accuracy = max(max_accuracy, acc_test)
@@ -112,27 +115,30 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--nepoch", default=100, help="number of training epochs", type=int)
-    parser.add_argument("--batch_size", default=32, help="batch_size", type=int)
-    parser.add_argument("--device", default='cpu', help="which GPU to use", type=str)
+    parser.add_argument("--batch_size", default=256, help="batch_size", type=int)
     parser.add_argument("--num_workers", default=4, help="num_workers", type=int)
     parser.add_argument("--warmup_epochs", default=1, help="warmup_epochs", type=int)
-    parser.add_argument("--feature_dim", default=2048, help="feature_dim", type=int)
+    parser.add_argument("--feature_dim", default=1024, help="feature_dim", type=int)
     parser.add_argument("--k", default=10, help="k neighbors for knn", type=int)
     parser.add_argument("--ddim_n_step", default=10, help="number of steps in ddim", type=int)
     parser.add_argument("--diff_encoder", default='resnet50_l',
                         help="which encoder for diffusion (resnet18_l, 34_l, 50_l...)", type=str)
+    parser.add_argument("--gpu_devices", default=[0, 1, 2, 3], type=int, nargs='+', help="")
+    parser.add_argument("--device", default=None, help="which cuda to use", type=str)
     args = parser.parse_args()
 
-    data_dir = os.path.join(os.getcwd(), 'Food101N')
+    if args.device is None:
+        gpu_devices = ','.join([str(id) for id in args.gpu_devices])
+        os.environ["CUDA_VISIBLE_DEVICES"] = gpu_devices
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    else:
+        device = args.device
 
-    # set device
-    device = args.device
-    print('Using device:', device)
+    data_dir = os.path.join(os.getcwd(), 'Food101N')
 
     # load dataset
     batch_size = args.batch_size
     num_workers = args.num_workers
-    device = args.device
     n_class = 101
 
     # prepare dataset directories
@@ -145,7 +151,7 @@ if __name__ == "__main__":
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers,
                                               worker_init_fn=init_fn, drop_last=True)
     test_dataset = Food101N(data_path=data_dir, split='test')
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=512, shuffle=False, num_workers=num_workers)
 
     # initialize diffusion model
     fp_encoder = clip_img_wrap('ViT-L/14', device, center=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
@@ -155,9 +161,20 @@ if __name__ == "__main__":
                                 feature_dim=args.feature_dim, encoder_type=args.diff_encoder,
                                 ddim_num_steps=args.ddim_n_step)
     # # load trained checkpoint to do test.
-    # state_dict = torch.load(model_path, map_location=torch.device(device))
-    # diffusion_model.load_diffusion_net(state_dict)
+    state_dict = torch.load(model_path, map_location=torch.device(device))
+    diffusion_model.load_diffusion_net(state_dict)
     diffusion_model.fp_encoder.eval()
+
+    # DataParallel wrapper
+    if args.device is None:
+        print('using DataParallel')
+        diffusion_model.model = nn.DataParallel(diffusion_model.model).to(device)
+        diffusion_model.diffusion_encoder = nn.DataParallel(diffusion_model.diffusion_encoder).to(device)
+        diffusion_model.fp_encoder = nn.DataParallel(diffusion_model.fp_encoder).to(device)
+        fp_encoder = nn.DataParallel(fp_encoder).to(device)
+    else:
+        print('using single gpu')
+        diffusion_model.to(device)
 
     # pre-compute for fp embeddings on training data
     print('pre-computing fp embeddings for training data')

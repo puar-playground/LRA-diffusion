@@ -59,7 +59,7 @@ def prepare_fp_x(fp_encoder, dataset, save_dir=None, device='cpu', fp_dim=768, b
             return fp_embed_all.cpu()
 
     with torch.no_grad():
-        data_loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+        data_loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=16)
         fp_embed_all = torch.zeros([len(dataset), fp_dim]).to(device)
         with tqdm(enumerate(data_loader), total=len(data_loader), desc=f'Computing embeddings fp(x)',
                   ncols=100) as pbar:
@@ -74,18 +74,17 @@ def prepare_fp_x(fp_encoder, dataset, save_dir=None, device='cpu', fp_dim=768, b
     return fp_embed_all.cpu()
 
 
-def accuracy(output, target, topk=(1,)):
+def cnt_agree(output, target, topk=(1,)):
     """
     Computes the accuracy over the k top predictions for the specified values of k.
     """
     maxk = min(max(topk), output.size()[1])
 
     output = torch.softmax(-(output - 1)**2,  dim=-1)
-    batch_size = target.size(0)
     _, pred = output.topk(maxk, 1, True, True)
     pred = pred.t()
     correct = pred.eq(target.reshape(1, -1).expand_as(pred))
 
-    return [correct[:min(k, maxk)].reshape(-1).float().sum(0) * 100. / batch_size for k in topk]
+    return torch.sum(correct).item()
 
 

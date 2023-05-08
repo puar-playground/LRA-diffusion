@@ -39,7 +39,10 @@ The [training data](https://github.com/puar-playground/LRA-diffusion/tree/main/C
 ```
 python train_Clothing1M.py --gpu_devices 0 1 2 3 --nepoch 200 --warmup_epochs 1 --feature_dim 1024
 ```
-
+### 4.4 WebVision<br />
+```
+python train_WebVision.py --gpu_devices 0 1 2 3 --nepoch 200 --warmup_epochs 1 --feature_dim 1024
+```
 
 ## Reference
 

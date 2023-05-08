@@ -132,12 +132,9 @@ if __name__ == "__main__":
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
     else:
         device = args.device
-    # data_dir = os.path.join(os.getcwd(), 'Food101N')
-    #
-    data_dir = os.path.join('/media/sdc/jian', 'Food101N_data')
-
 
     # load dataset
+    data_dir = os.path.join(os.getcwd(), 'Food101N')
     batch_size = args.batch_size
     num_workers = args.num_workers
     n_class = 101

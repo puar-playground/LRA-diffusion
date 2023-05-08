@@ -148,12 +148,12 @@ if __name__ == "__main__":
     else:
         device = args.device
 
-    webvision_dir = os.path.join(os.getcwd(), 'WebVision')
-    print('data_dir', webvision_dir)
-
     n_class = 50
 
     # load datasets WebVsison
+    webvision_dir = os.path.join(os.getcwd(), 'WebVision')
+    print('data_dir', webvision_dir)
+
     train_dataset = WebVision(data_root=webvision_dir, split='train', balance=False, randomize=False, cls_size=500,
                               transform='val')
     train_labels = torch.tensor(train_dataset.targets).to(torch.long)

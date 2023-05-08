@@ -14,7 +14,7 @@ pip install -r requirements.txt
 * CLIP models are available in the python package. <br />
 * For Clothing1M, the pre-trained ["Centrality and Consistency"](https://github.com/uitrbn/tscsi_idn) (CC) classification model is also provided.
 
-Trained checkpoints for the diffusion model is available at [here](https://drive.google.com/drive/folders/1SXzlQoOAksw349J2jnBSh5aCprDWdTQb?usp=share_link).
+Trained checkpoints for the diffusion models are available at [here](https://drive.google.com/drive/folders/1SXzlQoOAksw349J2jnBSh5aCprDWdTQb?usp=share_link).
 
 ## 3. Generate the Poly-Margin Diminishing (PMD) Noisy Labels
 The noisy labels used in our experiments are provided in folder `noisy_label`.<br />

@@ -96,19 +96,18 @@ def test(diffusion_model, test_loader, test_embed):
     with torch.no_grad():
         diffusion_model.model.eval()
         diffusion_model.fp_encoder.eval()
-        acc_avg = 0.
+        correct_cnt = 0.
         for test_batch_idx, data_batch in tqdm(enumerate(test_loader), total=len(test_loader), desc=f'evaluating diff', ncols=100):
             [images, target, indicies] = data_batch[:3]
             target = target.to(device)
 
             fp_embed = test_embed[indicies, :].to(device)
             label_t_0 = diffusion_model.reverse_ddim(images, stochastic=False, fp_x=fp_embed).detach().cpu()
-            acc_temp = accuracy(label_t_0.detach().cpu(), target.cpu())[0].item()
-            acc_avg += acc_temp
+            correct = cnt_agree(label_t_0.detach().cpu(), target.cpu())[0].item()
+            correct_cnt += correct
 
-        acc_avg /= len(test_loader)
-
-    return acc_avg
+    acc = 100 * correct_cnt / test_embed.shape[0]
+    return acc
 
 
 if __name__ == "__main__":
@@ -133,8 +132,10 @@ if __name__ == "__main__":
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
     else:
         device = args.device
+    # data_dir = os.path.join(os.getcwd(), 'Food101N')
+    #
+    data_dir = os.path.join('/media/sdc/jian', 'Food101N_data')
 
-    data_dir = os.path.join(os.getcwd(), 'Food101N')
 
     # load dataset
     batch_size = args.batch_size

@@ -113,40 +113,21 @@ def test(diffusion_model, test_loader):
     with torch.no_grad():
         diffusion_model.model.eval()
         diffusion_model.fp_encoder.eval()
-        acc_avg = 0.
+        correct_cnt = 0
+        all_cnt = 0
         for test_batch_idx, data_batch in tqdm(enumerate(test_loader), total=len(test_loader), desc=f'Doing DDIM...', ncols=100):
             [images, target, _] = data_batch[:3]
             target = target.to(device)
 
             label_t_0 = diffusion_model.reverse_ddim(images, stochastic=False, fq_x=None).detach().cpu()
-            acc_temp = accuracy(label_t_0.detach().cpu(), target.cpu())[0].item()
-            acc_avg += acc_temp
-
-        acc_avg /= len(test_loader)
+            correct = cnt_agree(label_t_0.detach().cpu(), target.cpu())[0].item()
+            correct_cnt += correct
+            all_cnt += images.shape[0]
 
     print(f'time cost for CLR: {time.time() - start}')
 
-    return acc_avg
-
-
-def test_clr(clr_model, test_loader):
-
-    start = time.time()
-    with torch.no_grad():
-        clr_model.eval()
-        acc_avg = 0.
-        for test_batch_idx, data_batch in tqdm(enumerate(test_loader), total=len(test_loader), desc=f'Doing DDIM...', ncols=100):
-            [images, target, _] = data_batch[:3]
-            target = target.to(device)
-
-            label_t_0 = clr_model(images.to(device)).detach().cpu()
-            acc_temp = accuracy(label_t_0.detach().cpu(), target.cpu())[0].item()
-            acc_avg += acc_temp
-
-        acc_avg /= len(test_loader)
-    print(f'time cost for CLR: {time.time() - start}')
-
-    return acc_avg
+    acc = 100 * correct_cnt / all_cnt
+    return acc
 
 
 if __name__ == "__main__":

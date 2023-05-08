@@ -1,15 +1,15 @@
-import torch
-import torch.nn as nn
+import numpy as np
 import torch.utils.data as data
 from tqdm import tqdm
 from utils.ema import EMA
-from utils.ResNet_for_224 import resnet50
-from utils.ResNet_for_CC import CC_model
-from utils.cloth_data_utils import Clothing1M, get_train_labels, get_val_test_labels
+from utils.clip_wrapper import clip_img_wrap
+from utils.webvision_data_utils import WebVision
 import torch.optim as optim
 from utils.learning import *
 from model_diffusion import Diffusion
 from utils.knn_utils import sample_knn_labels, knn, knn_labels, prepare_knn
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
 import argparse
 torch.manual_seed(123)
 torch.cuda.manual_seed(123)
@@ -17,23 +17,23 @@ np.random.seed(123)
 random.seed(123)
 
 
-def train(diffusion_model, train_labels, val_loader, test_loader, device,
-          model_save_dir, args, data_dir='./Clothing1M'):
+def train(diffusion_model, val_loader, device, model_save_dir, args, data_dir):
     # device = diffusion_model.device
 
     k = args.k
     n_epochs = args.nepoch
-    n_class = 14
+    n_class = 50
 
-    test_embed = np.load(os.path.join(data_dir, f'fp_embed_test_cloth.npy'))
-    val_embed = np.load(os.path.join(data_dir, f'fp_embed_val_cloth.npy'))
-    train_embed = torch.tensor(np.load(os.path.join(data_dir, 'fp_embed_train_cloth.npy'))).to(device)
+    val_embed = np.load(os.path.join(data_dir, 'fp_embed_val_webvision.npy'))
+    train_embed = torch.tensor(np.load(os.path.join(data_dir, 'fp_embed_train_webvision.npy'))).to(device)
+    train_labels = torch.tensor(np.load(os.path.join(data_dir, 'train_labels_webvision.npy'))).to(device)
 
     diffusion_model.fp_encoder.eval()
     params = list(diffusion_model.model.parameters()) + list(diffusion_model.diffusion_encoder.parameters())
     optimizer = optim.Adam(params, lr=0.0001, weight_decay=0.0, betas=(0.9, 0.999),
                            amsgrad=False, eps=1e-08)
     diffusion_loss = nn.MSELoss(reduction='none')
+    # diffusion_loss = nn.MSELoss()
     ema_helper = EMA(mu=0.9999)
     ema_helper.register(diffusion_model.model)
 
@@ -41,7 +41,7 @@ def train(diffusion_model, train_labels, val_loader, test_loader, device,
 
     print('Diffusion training start')
     for epoch in range(n_epochs):
-        train_dataset = Clothing1M(data_root=data_dir, split='CC', balance=True, randomize=True, cls_size=10000, transform='train')
+        train_dataset = WebVision(data_root=data_dir, split='train', balance=True, randomize=True, cls_size=500, transform='train')
         train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                                    num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
         diffusion_model.diffusion_encoder.train()
@@ -54,7 +54,7 @@ def train(diffusion_model, train_labels, val_loader, test_loader, device,
                     fp_embd = diffusion_model.fp_encoder(x_batch.to(device))
 
                 y_labels_batch, sample_weight = sample_knn_labels(fp_embd, y_batch.to(device), train_embed,
-                                                                  train_labels.to(device), k=k, n_class=n_class)
+                                                                  train_labels, k=k, n_class=n_class)
 
                 y_one_hot_batch, y_logits_batch = cast_label_to_one_hot_and_prototype(y_labels_batch.to(torch.int64),
                                                                                       n_class=n_class)
@@ -76,6 +76,7 @@ def train(diffusion_model, train_labels, val_loader, test_loader, device,
                 weighted_mse_loss = torch.matmul(sample_weight.to(device), mse_loss)
                 loss = torch.mean(weighted_mse_loss)
 
+                # loss = diffusion_loss(e, output)
                 pbar.set_postfix({'loss': loss.item()})
 
                 # optimize diffusion model that predicts eps_theta
@@ -87,10 +88,8 @@ def train(diffusion_model, train_labels, val_loader, test_loader, device,
                 ema_helper.update(diffusion_model.model)
 
         acc_val = test(diffusion_model, val_loader, val_embed)
+        print(f"epoch: {epoch}, val accuracy: {acc_val:.2f}%")
         if acc_val > max_accuracy:
-
-            acc_test = test(diffusion_model, test_loader, test_embed)
-            print(f"epoch: {epoch}, val accuracy: {acc_val:.2f}%, test accuracy: {acc_test:.2f}%")
             if args.device is None:
                 states = [diffusion_model.model.module.state_dict(),
                           diffusion_model.diffusion_encoder.module.state_dict()]
@@ -99,9 +98,7 @@ def train(diffusion_model, train_labels, val_loader, test_loader, device,
                           diffusion_model.diffusion_encoder.state_dict()]
             torch.save(states, model_save_dir)
             print("Model saved, best test accuracy at Epoch {}.".format(epoch))
-            max_accuracy = max(max_accuracy, acc_test)
-        else:
-            print(f"epoch: {epoch}, val accuracy: {acc_val:.2f}%")
+            max_accuracy = max(max_accuracy, acc_val)
 
 
 def test(diffusion_model, test_loader, test_embed):
@@ -109,11 +106,11 @@ def test(diffusion_model, test_loader, test_embed):
     if not torch.is_tensor(test_embed):
         test_embed = torch.tensor(test_embed).to(torch.float)
 
+    correct_cnt = 0
     with torch.no_grad():
         diffusion_model.model.eval()
         diffusion_model.diffusion_encoder.eval()
         diffusion_model.fp_encoder.eval()
-        correct_cnt = 0.
         for test_batch_idx, data_batch in tqdm(enumerate(test_loader), total=len(test_loader), desc=f'evaluating diff', ncols=100):
             [x_batch, target, indicies] = data_batch[:3]
             target = target.to(device)
@@ -134,10 +131,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--nepoch", default=300, help="number of training epochs", type=int)
     parser.add_argument("--batch_size", default=256, help="batch_size", type=int)
-    parser.add_argument("--num_workers", default=4, help="num_workers", type=int)
+    parser.add_argument("--num_workers", default=16, help="num_workers", type=int)
     parser.add_argument("--warmup_epochs", default=1, help="warmup_epochs", type=int)
     parser.add_argument("--feature_dim", default=1024, help="feature_dim", type=int)
-    parser.add_argument("--k", default=20, help="k neighbors for knn", type=int)
+    parser.add_argument("--k", default=50, help="k neighbors for knn", type=int)
     parser.add_argument("--ddim_n_step", default=10, help="number of steps in ddim", type=int)
     parser.add_argument("--diff_encoder", default='resnet50_l', help="which encoder for diffusion", type=str)
     parser.add_argument("--gpu_devices", default=[0, 1, 2, 3], type=int, nargs='+', help="")
@@ -151,39 +148,29 @@ if __name__ == "__main__":
     else:
         device = args.device
 
-    data_dir = os.path.join(os.getcwd(), 'Clothing1M')
-    print('data_dir', data_dir)
+    webvision_dir = os.path.join(os.getcwd(), 'WebVision')
+    print('data_dir', webvision_dir)
 
-    n_class = 14
+    n_class = 50
 
-    # prepare dataset directories
-    get_train_labels(data_dir)
-    get_val_test_labels(data_dir)
+    # load datasets WebVsison
+    train_dataset = WebVision(data_root=webvision_dir, split='train', balance=False, randomize=False, cls_size=500,
+                              transform='val')
+    train_labels = torch.tensor(train_dataset.targets).to(torch.long)
+    np.save(os.path.join(webvision_dir, f'train_labels_webvision.npy'), train_labels)
+    val_dataset = WebVision(data_root=webvision_dir, split='val')
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=512, shuffle=False, num_workers=args.num_workers)
 
     # initialize diffusion model
-    train_dataset = Clothing1M(data_root=data_dir, split='CC', transform='test')
-    train_labels = torch.tensor(train_dataset.targets).to(torch.long)
-    test_dataset = Clothing1M(data_root=data_dir, split='test')
-    val_dataset = Clothing1M(data_root=data_dir, split='val')
-    fp_encoder = CC_model()
-    CC_model_dict = torch.load('./model/CC_net.pt')
-    fp_encoder.load_state_dict(CC_model_dict)
-    fp_encoder.eval()
-    fp_dim = 128
-
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=400, shuffle=True,
-                                               num_workers=args.num_workers, worker_init_fn=init_fn, drop_last=True)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=400, shuffle=False,
-                                              num_workers=args.num_workers)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=400, shuffle=False,
-                                              num_workers=args.num_workers)
-
-    model_path = './model/LRA-diffusion_Clothing1M.pt'
+    fp_encoder = clip_img_wrap('ViT-L/14', device, center=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+    fp_dim = fp_encoder.dim
+    model_path = './model/LRA-diffusion_WebVision.pt'
     diffusion_model = Diffusion(fp_encoder, num_timesteps=1000, n_class=n_class, fp_dim=fp_dim, device=device,
                                 feature_dim=args.feature_dim, encoder_type=args.diff_encoder,
                                 ddim_num_steps=args.ddim_n_step, beta_schedule='cosine')
     state_dict = torch.load(model_path, map_location=torch.device(device))
     diffusion_model.load_diffusion_net(state_dict)
+    diffusion_model.fp_encoder.eval()
 
     # DataParallel wrapper
     if args.device is None:
@@ -195,24 +182,23 @@ if __name__ == "__main__":
         print('using single gpu')
         diffusion_model.to(device)
 
-    # # # pre-compute for fp embeddings on training data
-    # print('pre-computing fp embeddings for training data')
-    # train_embed_dir = os.path.join(data_dir, f'fp_embed_train_cloth.npy')
-    # train_embed = prepare_fp_x(diffusion_model.fp_encoder, train_dataset, train_embed_dir, device=device, fp_dim=fp_dim)
-    # # for validation data
-    # print('pre-computing fp embeddings for validation data')
-    # val_embed_dir = os.path.join(data_dir, f'fp_embed_val_cloth.npy')
-    # val_embed = prepare_fp_x(diffusion_model.fp_encoder, val_dataset, val_embed_dir, device=device, fp_dim=fp_dim)
-    # for testing data
-    print('pre-computing fp embeddings for testing data')
-    test_embed_dir = os.path.join(data_dir, f'fp_embed_test_cloth.npy')
-    test_embed = prepare_fp_x(diffusion_model.fp_encoder, test_dataset, test_embed_dir, device=device, fp_dim=fp_dim)
+    # # pre-compute for fp embeddings on training data
+    print('pre-computing fp embeddings for training data')
+    train_embed_dir = os.path.join(webvision_dir, f'fp_embed_train_webvision.npy')
+    train_embed = prepare_fp_x(diffusion_model.fp_encoder, train_dataset, train_embed_dir, device=device,
+                               fp_dim=fp_dim, batch_size=200)
+    # for validation data
+    print('pre-computing fp embeddings for validation data for webvision')
+    val_embed_dir = os.path.join(webvision_dir, f'fp_embed_val_webvision.npy')
+    val_embed = prepare_fp_x(diffusion_model.fp_encoder, val_dataset, val_embed_dir, device=device,
+                             fp_dim=fp_dim, batch_size=200)
 
-    max_accuracy = test(diffusion_model, test_loader, test_embed)
-    print('test accuracy:', max_accuracy)
+    max_accuracy = test(diffusion_model, val_loader, val_embed)
+    print('test webvision accuracy:', max_accuracy)
 
     # train the diffusion model
-    # train(diffusion_model, train_labels, val_loader, test_loader, device, model_path, args, data_dir=data_dir)
+    # train(diffusion_model, val_loader, device, model_path, args, data_dir=data_dir)
+
 
 
 

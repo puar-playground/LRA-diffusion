@@ -9,10 +9,12 @@ Install requirements.<br />
 pip install -r requirements.txt
 ```
 
-## 2. Pre-trained model
+## 2. Pre-trained model & Checkpoints
 * The pre-trianed SimCLR encoder for CIFAR-10 and CIFAR-100 is provided in the [model](https://github.com/puar-playground/LRA-diffusion/tree/main/model) folder. <br />
 * CLIP models are available in the python package. <br />
 * For Clothing1M, the pre-trained ["Centrality and Consistency"](https://github.com/uitrbn/tscsi_idn) (CC) classification model is also provided.
+<br />
+Trained checkpoints for the diffusion model is available at [here](https://drive.google.com/drive/folders/1SXzlQoOAksw349J2jnBSh5aCprDWdTQb?usp=share_link).
 
 ## 3. Generate the Poly-Margin Diminishing (PMD) Noisy Labels
 The noisy labels used in our experiments are provided in folder `noisy_label`.<br />
@@ -38,8 +40,6 @@ The [training data](https://github.com/puar-playground/LRA-diffusion/tree/main/C
 python train_Clothing1M.py --gpu_devices 0 1 2 3 --nepoch 200 --warmup_epochs 1 --feature_dim 1024
 ```
 
-## 5. Checkpoints
-Trained checkpoints for the diffusion model is available at [here](https://drive.google.com/drive/folders/1SXzlQoOAksw349J2jnBSh5aCprDWdTQb?usp=share_link).
 
 ## Reference
 

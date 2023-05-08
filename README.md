@@ -40,7 +40,7 @@ The [training data](https://github.com/puar-playground/LRA-diffusion/tree/main/C
 python train_Clothing1M.py --gpu_devices 0 1 2 3 --nepoch 200 --warmup_epochs 1 --feature_dim 1024
 ```
 ### 4.4 WebVision<br />
-Download WebVision 1.0 and the validation set of [ILSVRC2012](https://www.image-net.org/challenges/LSVRC/2012/) datasets.
+Download WebVision 1.0 and the validation set of [ILSVRC2012](https://www.image-net.org/challenges/LSVRC/2012/) datasets. The ImageNet synsets labels for ILSVRC2012 validation set is provided [here]()
 ```
 python train_WebVision.py --gpu_devices 0 1 2 3 --nepoch 200 --warmup_epochs 1 --feature_dim 1024
 ```

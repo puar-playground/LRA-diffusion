@@ -25,7 +25,7 @@ Default values for input arguments are given in the code. An example command is 
 python train_CIFAR.py --device cuda:0 --noise_type cifar10-1-0.35 --fp_encoder SimCLR --nepoch 200 --warmup_epochs 5
 ```
 ### 4.2 Food101N and Food101<br />
-The dataset should be downloaded according to the instruction here: [Food101N](https://github.com/puar-playground/LRA-diffusion/tree/main/Food101N_data)<br />
+The dataset should be downloaded according to the instruction here: [Food101N](https://github.com/puar-playground/LRA-diffusion/tree/main/Food101N)<br />
 Default values for input arguments are given in the code. An example command is given:
 ```
 python train_Food101N.py --gpu_devices 0 1 2 3 --nepoch 200 --warmup_epochs 1 --feature_dim 1024

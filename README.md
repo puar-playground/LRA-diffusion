@@ -17,7 +17,7 @@ pip install -r requirements.txt
 Trained checkpoints for the diffusion models are available at [here](https://drive.google.com/drive/folders/1SXzlQoOAksw349J2jnBSh5aCprDWdTQb?usp=share_link).
 
 ## 3. Generate the Poly-Margin Diminishing (PMD) Noisy Labels
-The noisy labels used in our experiments are provided in folder `noisy_label`. The noisy labels are generated following [PLC](https://openreview.net/pdf?id=ZPa2SyGcbwh)
+The noisy labels used in our experiments are provided in folder `noisy_label`. The noisy labels are generated following the original [paper](https://openreview.net/pdf?id=ZPa2SyGcbwh)
 
 ## 4. Run demo script to train the LRA-diffusion
 ### 4.1 CIFAR-10 and CIFAR-100<br />

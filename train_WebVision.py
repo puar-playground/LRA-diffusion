@@ -197,7 +197,7 @@ if __name__ == "__main__":
     print('test webvision accuracy:', max_accuracy)
 
     # train the diffusion model
-    # train(diffusion_model, val_loader, device, model_path, args, data_dir=data_dir)
+    train(diffusion_model, val_loader, device, model_path, args, data_dir=webvision_dir)
 
 
 

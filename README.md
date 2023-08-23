@@ -11,7 +11,7 @@ pip install -r requirements.txt
 
 ## 2. Pre-trained model & Checkpoints
 * The pre-trianed SimCLR encoder for CIFAR-10 and CIFAR-100 is provided in the [model](https://github.com/puar-playground/LRA-diffusion/tree/main/model) folder. <br />
-* CLIP models are available in the python package at ["here"](https://github.com/openai/CLIP). <br />
+* CLIP models are available in the python package at [here](https://github.com/openai/CLIP). <br />
 ```
 pip install git+https://github.com/openai/CLIP.git
 ```

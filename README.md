@@ -3,7 +3,7 @@ This is the source code of the [LRA-Diffusion](https://arxiv.org/abs/2305.19518)
 
 <!-- ![CIFAR-10_TSNE](https://user-images.githubusercontent.com/123635107/214941573-02dfafbc-6e18-400d-87e6-fa604aab2501.png) -->
 
-## 1. preparing python environment
+## 1. Preparing python environment
 Install requirements.<br />
 ```
 pip install -r requirements.txt

@@ -50,11 +50,13 @@ python train_WebVision.py --gpu_devices 0 1 2 3 --nepoch 200 --warmup_epochs 1 -
 
 ## Reference
 ```
-@article{chen2023label,
+@inproceedings{
+  chen2023labelretrievalaugmented,
   title={Label-Retrieval-Augmented Diffusion Models for Learning from Noisy Labels},
-  author={Chen, Jian and Zhang, Ruiyi and Yu, Tong and Sharma, Rohan and Xu, Zhiqiang and Sun, Tong and Chen, Changyou},
-  journal={arXiv preprint arXiv:2305.19518},
-  year={2023}
+  author={Jian Chen and Ruiyi Zhang and Tong Yu and Rohan Sharma and zhiqiang xu and Tong Sun and Changyou Chen},
+  booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
+  year={2023},
+  url={https://openreview.net/forum?id=o778eWSr1S}
 }
 ```
 

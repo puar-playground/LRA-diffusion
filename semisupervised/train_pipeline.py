@@ -17,7 +17,7 @@ def train(model_instantiator: Callable[[], Diffusion], labeled_dataset: LabeledD
     while not has_converged(unlabeled_dataset):
         model = model_instantiator()
         train_iteration(model, labeled_dataset, args)
-        test(model, test_dataset)
+        test(model, test_dataset, args)
         annotated_dataset = annotate_data(model, unlabeled_dataset)
         if len(annotated_dataset) == 0:
             raise Exception("cannot converge")
@@ -85,8 +85,25 @@ def train_iteration(model: Diffusion, labeled_dataset: LabeledDataset, args):
 
 
 # @save_model
-def test(model: Diffusion, test_dataset: Custom_dataset):
-    pass
+def test(model: Diffusion, test_dataset: Custom_dataset, args):
+    test_loader = data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
+    with torch.no_grad():
+        model.model.eval()
+        model.fp_encoder.eval()
+        correct_cnt = 0
+        all_cnt = 0
+        for test_batch_idx, data_batch in enumerate(test_loader):
+            [images, target, _] = data_batch[:3]
+            target = target.to(args.device)
+
+            label_t_0 = model.reverse_ddim(images, stochastic=False, fq_x=None).detach().cpu()
+            correct = cnt_agree(label_t_0.detach().cpu(), target.cpu())
+            correct_cnt += correct
+            all_cnt += images.shape[0]
+
+    acc = 100 * correct_cnt / all_cnt
+    print("Accuracy on test set: ", acc)
+    # TODO - save model
 
 
 def annotate_data(model: Diffusion, unlabeled_dataset: UnlabeledDataset) -> Dict[int, int]:

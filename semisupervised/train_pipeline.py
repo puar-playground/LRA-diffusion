@@ -1,4 +1,4 @@
-from typing import Callable, Dict
+from typing import Callable, Dict, List, Tuple
 
 import torch
 from torch import optim, nn
@@ -9,7 +9,8 @@ from semisupervised.dataset_utils import LabeledDataset, UnlabeledDataset
 from utils.data_utils import Custom_dataset
 from utils.ema import EMA
 from utils.knn_utils import sample_knn_labels
-from utils.learning import prepare_fp_x, cast_label_to_one_hot_and_prototype, adjust_learning_rate, cnt_agree
+from utils.learning import prepare_fp_x, cast_label_to_one_hot_and_prototype, adjust_learning_rate, predict_labels, \
+    count_correct_predictions
 
 
 def train(model_instantiator: Callable[[], Diffusion], labeled_dataset: LabeledDataset,
@@ -18,11 +19,12 @@ def train(model_instantiator: Callable[[], Diffusion], labeled_dataset: LabeledD
         model = model_instantiator()
         train_iteration(model, labeled_dataset, args)
         test(model, test_dataset, args)
-        annotated_dataset = annotate_data(model, unlabeled_dataset)
+
+        annotated_dataset = annotate_data(model, unlabeled_dataset, args)
         if len(annotated_dataset) == 0:
             raise Exception("cannot converge")
-        labeled_dataset.add_pseudo_labels(annotated_dataset)
-        unlabeled_dataset.remove_data_points(annotated_dataset)
+        labeled_dataset.add_pseudo_labels(list(annotated_dataset.values()))
+        unlabeled_dataset.remove_data_points(list(annotated_dataset.keys()))
 
 
 def train_iteration(model: Diffusion, labeled_dataset: LabeledDataset, args):
@@ -96,8 +98,8 @@ def test(model: Diffusion, test_dataset: Custom_dataset, args):
             [images, target, _] = data_batch[:3]
             target = target.to(args.device)
 
-            label_t_0 = model.reverse_ddim(images, stochastic=False, fq_x=None).detach().cpu()
-            correct = cnt_agree(label_t_0.detach().cpu(), target.cpu())
+            predicted_labels, softmax_output = predict_labels(model, images)
+            correct = count_correct_predictions(predicted_labels.cpu(), target.cpu())
             correct_cnt += correct
             all_cnt += images.shape[0]
 
@@ -106,9 +108,31 @@ def test(model: Diffusion, test_dataset: Custom_dataset, args):
     # TODO - save model
 
 
-def annotate_data(model: Diffusion, unlabeled_dataset: UnlabeledDataset) -> Dict[int, int]:
-    pass
+def annotate_data(model: Diffusion, unlabeled_dataset: UnlabeledDataset, args) -> Dict[int, Tuple[int, int]]:
+    loader = data.DataLoader(unlabeled_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
+    confident_pseudo_labels = dict()
+    with torch.no_grad():
+        model.model.eval()
+        model.fp_encoder.eval()
+        for batch_idx, data_batch in enumerate(loader):
+            [images, _, indexes] = data_batch[:3]
+            predicted_labels, softmax_output = predict_labels(model, images)
+            probabilities = get_probabilities_of_pseudo_labels(predicted_labels, softmax_output)
+            confidence = [is_confident_in_label(probability, args) for probability in probabilities]
+            confident_labels_in_batch = {key.item(): (unlabeled_dataset.data[key.item()], label.item()) for
+                                         key, label, conf_status in
+                                         zip(indexes, predicted_labels, confidence) if conf_status}
+            confident_pseudo_labels.update(confident_labels_in_batch)
+    return confident_pseudo_labels
 
 
 def has_converged(unlabeled_dataset: UnlabeledDataset):
-    pass
+    return len(unlabeled_dataset) == 0
+
+
+def get_probabilities_of_pseudo_labels(predicted_labels: torch.Tensor, softmax_output: torch.Tensor) -> List[float]:
+    return [softmax_output[i][label.item()].item() for i, label in enumerate(predicted_labels)]
+
+
+def is_confident_in_label(probability: float, args):
+    return probability > args.conf_threshold

@@ -7,6 +7,8 @@ import os
 import torch.utils.data as data
 from tqdm import tqdm
 
+from model_diffusion import Diffusion
+
 
 def set_random_seed(seed):
     print(f"\n* Set seed {seed}")
@@ -87,4 +89,17 @@ def cnt_agree(output, target, topk=(1,)):
 
     return torch.sum(correct).item()
 
+
+def predict_labels(diffusion_model: Diffusion, images):
+    label_t_0 = diffusion_model.reverse_ddim(images, stochastic=False, fq_x=None).detach().cpu()
+    output = torch.softmax(-(label_t_0 - 1)**2,  dim=-1)
+    _, pred = output.topk(1, 1, True, True)
+    return pred, output
+
+
+def count_correct_predictions(predicted, target):
+    pred = predicted.t()
+    correct = pred.eq(target.reshape(1, -1).expand_as(pred))
+
+    return torch.sum(correct).item()
 

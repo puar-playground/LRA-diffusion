@@ -25,20 +25,20 @@ The noisy labels used in our experiments are provided in folder `noisy_label`. T
 
 ## 4. Run demo script to train the LRA-diffusion
 ### 4.1 CIFAR-10 and CIFAR-100<br />
-Default values for input arguments are given in the code. An example command is given:
+Default values for input arguments are provided in the code. An example command is:
 ```
 python train_CIFAR.py --device cuda:0 --noise_type cifar10-1-0.35 --fp_encoder SimCLR --nepoch 200 --warmup_epochs 5
 ```
 ### 4.2 Food-101N and Food-101<br />
 The dataset should be downloaded according to the instruction here: [Food-101N](https://github.com/puar-playground/LRA-diffusion/tree/main/Food101N)<br />
-Default values for input arguments are given in the code. An example command is given:
+Default values for input arguments are provided in the code. An example command is:
 ```
 python train_Food101N.py --gpu_devices 0 1 2 3 --nepoch 200 --warmup_epochs 1 --feature_dim 1024
 ```
 ### 4.3 Clothing1M<br />
-The dataset should be downloaded according to the instruction here: [Clothing1M](https://github.com/puar-playground/LRA-diffusion/tree/main/Clothing1M_data). Default values for input arguments are given in the code. <br />
+The dataset should be downloaded according to the instruction here: [Clothing1M](https://github.com/puar-playground/LRA-diffusion/tree/main/Clothing1M_data). Default values for input arguments are provided in the code. <br />
 
-The [training data](https://github.com/puar-playground/LRA-diffusion/tree/main/Clothing1M/annotations) is selected by the pre-trained CC classifier. An example command using multiple gpus is given:
+The [training data](https://github.com/puar-playground/LRA-diffusion/tree/main/Clothing1M/annotations) is selected by the pre-trained CC classifier. An example command using multiple gpus is:
 ```
 python train_Clothing1M.py --gpu_devices 0 1 2 3 --nepoch 200 --warmup_epochs 1 --feature_dim 1024
 ```
